@@ -1,0 +1,53 @@
+name: verify
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  verify:
+    name: Lint, Type Check, Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint (ESLint + Markdownlint)
+        run: npm run lint
+
+      - name: Lint docs (AGENTS.md integrity + structure)
+        run: npm run lint:docs
+
+      - name: Check documentation links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: "--offline --no-progress --exclude-path docs/exec-plans --exclude-path docs/product-specs --exclude-path docs/references docs/ AGENTS.md ARCHITECTURE.md"
+          fail: true
+          failIfEmpty: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Verify CLAUDE.md symlink
+        run: |
+          test -L CLAUDE.md || (echo "ERROR: CLAUDE.md must be a symlink to AGENTS.md" && exit 1)
+          LINK_TARGET=$(readlink CLAUDE.md)
+          test "$LINK_TARGET" = "AGENTS.md" || (echo "ERROR: CLAUDE.md symlink target is '$LINK_TARGET', expected 'AGENTS.md'" && exit 1)
+          echo "✓ CLAUDE.md is a valid symlink to AGENTS.md"

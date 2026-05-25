@@ -1,0 +1,5 @@
+# Next.js App Router — LLM Reference
+
+Source: https://nextjs.org/docs/app
+Fetch and paste the relevant sections before implementing routes/layouts.
+Current version: 16.x (proxy.ts replaces middleware.ts in Next.js 16)

@@ -1,0 +1,6 @@
+# Claude Agent SDK (= @anthropic-ai/sdk) — LLM Reference
+
+Source: https://docs.anthropic.com/en/api/getting-started
+Fetch and paste the relevant sections before implementing agent tools.
+Key exports from @anthropic-ai/sdk: Anthropic, toReadableStream
+Tool use, streaming, and beta features documented at above URL.
