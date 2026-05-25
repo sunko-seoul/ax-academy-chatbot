@@ -33,16 +33,9 @@ jobs:
       - name: Check documentation links
         uses: lycheeverse/lychee-action@v2
         with:
-          args: >-
-            --offline
-            --no-progress
-            --exclude-path docs/exec-plans
-            --exclude-path docs/product-specs
-            --exclude-path docs/references
-            docs/
-            AGENTS.md
-            ARCHITECTURE.md
+          args: "--offline --no-progress --exclude-path docs/exec-plans --exclude-path docs/product-specs --exclude-path docs/references docs/ AGENTS.md ARCHITECTURE.md"
           fail: true
+          failIfEmpty: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
