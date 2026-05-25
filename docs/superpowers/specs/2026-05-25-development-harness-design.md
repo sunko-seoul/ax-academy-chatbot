@@ -50,9 +50,10 @@ ax-academy-chatbot/
 │   │   ├── 2026-05-25-internal-chatbot-design.md     ← 기존 챗봇 스펙 이전
 │   │   └── 2026-05-25-development-harness-design.md  ← 본 문서 이전
 │   ├── exec-plans/
+│   │   ├── index.md                   ← active/completed 사용법 + 부채 기록 절차
 │   │   ├── active/                    ← writing-plans 출력
 │   │   ├── completed/                 ← 완료 시 이동
-│   │   └── tech-debt-tracker.md
+│   │   └── tech-debt-tracker.md       ← 기술 부채 단일 기록처
 │   ├── generated/
 │   │   ├── db-schema.md               ← Supabase 스키마 dump (AUTO-GENERATED)
 │   │   └── api-routes.md              ← Next.js route 인벤토리 (AUTO-GENERATED)
@@ -63,7 +64,6 @@ ax-academy-chatbot/
 │   │   └── pgvector-llms.txt
 │   ├── DESIGN.md
 │   ├── FRONTEND.md
-│   ├── PLANS.md
 │   ├── PRODUCT_SENSE.md
 │   ├── QUALITY_SCORE.md
 │   ├── RELIABILITY.md
@@ -136,7 +136,19 @@ superpowers 플러그인은 기본적으로 `docs/superpowers/specs/`, `docs/sup
 - ❌ TDD 없이 구현 코드 작성 — 테스트가 먼저
 - ❌ Supabase service role 키를 클라이언트 코드에서 import
 - ❌ HR 규정 같은 민감 정보를 코드 안에 하드코딩
-- ❌ superpowers 기본 경로(`docs/superpowers/...`) 사용 — 위 표의 경로로 오버라이드
+
+## 🔀 superpowers 경로 오버라이드 (필수 절차)
+
+superpowers 스킬들은 기본 경로(`docs/superpowers/specs/`, `docs/superpowers/plans/`)에 출력합니다.
+이 프로젝트에서는 출력 직후 **반드시 아래 경로로 이동**해야 합니다.
+
+| 스킬 호출 직후 | 수동 이동 |
+|--------------|----------|
+| `superpowers:brainstorming` 완료 | `docs/superpowers/specs/*.md` → `docs/product-specs/` |
+| `superpowers:writing-plans` 완료 | `docs/superpowers/plans/*.md` → `docs/exec-plans/active/` |
+| `superpowers:finishing-a-development-branch` 완료 | `docs/exec-plans/active/*.md` → `docs/exec-plans/completed/` |
+
+이동 후 `docs/superpowers/`가 비어있는지 `tools/lint-structure.ts`가 검증합니다 (CI에서 차단).
 
 ## 🔍 자체 검증
 
@@ -300,7 +312,7 @@ src/
 |-----|---------|----------|
 | `docs/DESIGN.md` | 200 | shadcn/ui 컴포넌트 기본, 한국어 UX 규약, 다크모드 정책 |
 | `docs/FRONTEND.md` | 200 | Server Components 우선, RSC 경계, 상태관리(Zustand vs Server state) |
-| `docs/PLANS.md` | 200 | "active/에 진행중 계획. 완료 시 completed/로 이동" + tech-debt-tracker 사용법 |
+| `docs/exec-plans/index.md` | 200 | "active/에 진행중 계획. 완료 시 completed/로 이동. 기술 부채는 `tech-debt-tracker.md`에 단일 기록 (다른 곳 ❌)" |
 | `docs/PRODUCT_SENSE.md` | 200 | "1) 직원 시간 절약 최우선 2) 모른다고 답하기를 두려워하지 않음 3) 출처 투명성" |
 | `docs/QUALITY_SCORE.md` | 200 | 표: 도메인 / 등급(A~D) / 마지막 갱신 / 부채 노트 — 초기엔 모든 도메인 N/A |
 | `docs/RELIABILITY.md` | 200 | "외부 API 호출은 항상 timeout + retry, graceful degradation 패턴, p99 응답시간 목표" |
@@ -358,17 +370,30 @@ src/
 
 ### 7.5 ESLint 커스텀 룰 (`eslint.config.mjs`)
 
-5개 커스텀 룰을 `eslint-plugin-local`로 직접 작성. 모두 `@typescript-eslint/parser` + `parserOptions.project: './tsconfig.json'`을 요구 (타입 정보 활용).
+4개 커스텀 룰을 `eslint-plugin-local`로 직접 작성. 모두 **AST 기반** (타입 정보 미사용 → CI 빠름).
 
 | 룰 ID | 검사 방식 | 검사 내용 | 위반 메시지 |
 |------|---------|----------|------------|
-| `no-secret-in-client` | **경로 allowlist 방식** — `SUPABASE_SERVICE_ROLE_KEY` 등 지정 변수를 참조하는 파일이 허용 경로(`app/api/**`, `src/providers/**`, `src/domains/*/repo.ts`, `src/domains/*/runtime/**`)에 없으면 위반. `'use client'` 디렉티브 감지는 사용하지 않음 (§4 원칙 4와 일치). | secret env var가 허용 경로 밖에서 참조 | "Secret X cannot be used outside allowed paths. Allowed: app/api/**, src/providers/**, src/domains/*/repo.ts, src/domains/*/runtime/**. See docs/SECURITY.md." |
+| `no-secret-in-client` | **경로 allowlist 방식** — `SUPABASE_SERVICE_ROLE_KEY` 등 지정 변수를 참조하는 파일이 허용 경로(`app/api/**`, `src/providers/**`, `src/domains/*/repo.ts`, `src/domains/*/runtime/**`)에 없으면 위반 (§4 원칙 4와 일치) | secret env var가 허용 경로 밖에서 참조 | "Secret X cannot be used outside allowed paths. Allowed: app/api/**, src/providers/**, src/domains/*/repo.ts, src/domains/*/runtime/**. See docs/SECURITY.md." |
 | `domain-boundary` | AST: import 경로 분석 | `src/domains/X`가 `src/domains/Y` import | "Cross-domain import detected. Use providers or duplicate logic. See ARCHITECTURE.md." |
 | `layer-direction` | AST: import 경로 + 파일명 매핑 | 역방향 레이어 import | "Layer violation: repo cannot import service. See ARCHITECTURE.md." |
 | `no-direct-db-in-ui` | AST: import source 검사 | `src/app/**/*.tsx`가 `@supabase/supabase-js` import | "UI must call API routes, not DB directly. See ARCHITECTURE.md." |
-| `tool-must-return-error` | **타입 기반** — `@typescript-eslint`의 `getTypeAtLocation`으로 export 함수 반환 타입이 `{ error: string }` union을 포함하는지 검사 | `src/domains/chat/runtime/tools/*` export 함수가 `Promise<{...} \| { error: string }>` 형태 아님 | "Tools must return { error: string } union. See docs/design-docs/core-beliefs.md#5." |
 
-→ 모든 메시지는 **수정 방법 + 관련 문서 경로** 포함 (에이전트 다음 시도에서 참조).
+→ 모든 메시지는 **수정 방법 + 관련 문서 경로** 포함.
+
+### 7.6 Tool contract test (vitest 기반)
+
+황금 원칙 §4-5번 ("tool failures must be graceful")은 **타입 기반 ESLint 룰** 대신 **vitest contract test**로 강제 (CI 비용/유지보수 부담 회피).
+
+`src/domains/chat/runtime/tools/__tests__/contracts.test.ts`:
+- `src/domains/chat/runtime/tools/*.ts`의 모든 export 함수를 자동 import
+- 각 함수에 대해 외부 API mock으로 **실패 케이스 강제 발생** (네트워크 에러, 타임아웃, 401 등)
+- assertion: `expect(result).toMatchObject({ error: expect.any(String) })` — throw하면 테스트 실패
+- assertion: `expect(executionTime).toBeLessThan(5000)` — 타임아웃 5초 이내
+
+새 tool 파일 추가 시 contract test가 자동으로 포함하므로 (디렉토리 glob), 보일러플레이트 없음.
+
+CI에서 `npm run test`가 차단 게이트.
 
 ---
 
@@ -443,35 +468,47 @@ PR 차단 정책: 위 단계 중 하나라도 실패 시 머지 불가.
      → QUALITY_SCORE.md 업데이트
 ```
 
-### 9.2 경로 오버라이드
-superpowers는 기본적으로 `docs/superpowers/specs/`, `docs/superpowers/plans/`에 출력. 본 하네스에서는 AGENTS.md에 명시된 경로로 오버라이드한다. 에이전트는 작업 시작 시 AGENTS.md를 먼저 읽으므로 자동으로 올바른 경로에 출력하게 됨.
+### 9.2 경로 오버라이드 (수동 이동 + CI 가드)
 
-명시적 보장을 위해 `tools/lint-structure.ts`가 `docs/superpowers/`가 비어있는지 검증 (있으면 위반).
+**현실:** superpowers 스킬의 출력 경로는 각 SKILL.md에 하드코딩되어 있어, AGENTS.md를 읽는 것만으로 자동 변경되지 않는다.
+
+**해결:** 에이전트는 스킬 호출 직후 **수동으로 출력물을 이동**한다 (AGENTS.md "🔀 superpowers 경로 오버라이드" 섹션의 표 참조).
+
+**보장 메커니즘 — 3중 가드:**
+1. **AGENTS.md의 절차 명시** — 모든 에이전트 세션이 시작 시 읽는 문서에 표로 명시
+2. **사후 검증** — `tools/lint-structure.ts`가 `docs/superpowers/`가 빈 디렉토리이거나 존재하지 않는지 검증. 위반 시 종료 코드 1
+3. **CI 차단** — `npm run lint:docs`가 CI 게이트에 포함되어 PR 머지 차단
+
+부수 효과로, 에이전트가 이동을 잊으면 다음 PR 시 즉시 빨간불이 켜진다. 디버깅 메시지: "superpowers output detected at docs/superpowers/. Move to docs/product-specs/ or docs/exec-plans/active/. See AGENTS.md."
 
 ---
 
 ## 10. 부트스트랩 순서
 
-이 하네스 자체의 구축 순서. **린터를 먼저 만들고 그 다음 문서를 작성**해야 검증 체인이 성립한다 (chicken-and-egg 회피). `writing-plans`에서 상세 plan으로 확장됨.
+이 하네스 자체의 구축 순서. **린터/설정을 먼저 만들고 그 다음 문서/마이그레이션을 작성**해야 검증 체인이 성립한다. `writing-plans`에서 상세 plan으로 확장됨.
 
 | 단계 | 작업 | 검증 |
 |-----|------|------|
 | 1 | Next.js 15 App Router + TypeScript + Tailwind 프로젝트 초기화 | `npm run build` 성공 (build만, verify는 아직) |
-| 2 | 의존성 추가 (vitest, eslint, @typescript-eslint/*, markdownlint-cli2, lychee, tsx, zod, @anthropic-ai/agent-sdk, @supabase/supabase-js) | `npm install` 성공 |
-| 3 | **린터 도구 먼저 작성 (TDD)** — `tools/lint-agents-md.ts`, `tools/lint-structure.ts` + fixture 테스트 | vitest로 fixture 통과 |
-| 4 | ESLint 커스텀 룰 5개 작성 (TDD) + `eslint.config.mjs` 설정 (TS 프로젝트 참조 포함) | 룰별 fixture 테스트 통과 |
-| 5 | `docs/` 디렉토리 + 8종 핵심 문서 시드 작성 (`DESIGN.md`, `FRONTEND.md`, `PLANS.md`, `PRODUCT_SENSE.md`, `QUALITY_SCORE.md`, `RELIABILITY.md`, `SECURITY.md`, `design-docs/core-beliefs.md` + 각 디렉토리 `index.md`) | (아직 AGENTS.md 없음) 파일 존재 확인 |
-| 6 | `ARCHITECTURE.md` 작성 | 파일 존재 |
-| 7 | `AGENTS.md` 작성 + `CLAUDE.md` 심볼릭 링크 (`ln -s AGENTS.md CLAUDE.md`) | 양쪽 존재, symlink target 정확 |
-| 8 | 이제 `tools/lint-agents-md.ts` 실행 → 통과해야 함 | 통과 |
-| 9 | `package.json` scripts + `.github/workflows/verify.yml` 작성 | 로컬에서 `npm run verify` 통과 |
-| 10 | 기존 챗봇 스펙(`docs/superpowers/specs/2026-05-25-internal-chatbot-design.md`)과 본 문서를 `docs/product-specs/`로 이동 → `docs/superpowers/` 디렉토리 삭제 | `tools/lint-structure.ts`가 `docs/superpowers/` 부재 확인 |
-| 11 | CI 워크플로우에 **symlink 보존 가드** 추가: `test -L CLAUDE.md` (CLAUDE.md가 심볼릭 링크인지 확인) | CI 통과 |
+| 2 | 의존성 추가 (vitest, eslint, @typescript-eslint/*, markdownlint-cli2, lychee, tsx, zod, @anthropic-ai/agent-sdk, @supabase/supabase-js, @supabase/ssr) | `npm install` 성공 |
+| 3 | **설정 파일 작성** — `tsconfig.json` (path alias 포함), `vitest.config.ts` (alias 동일 적용), `.markdownlint-cli2.jsonc` | `npx vitest --version` 실행 가능, `npx tsc --noEmit` 통과 |
+| 4 | **`.env.example` 시드** — 챗봇 스펙 §9의 6개 env var 모두 빈 값으로 (`ANTHROPIC_API_KEY=`, `NEXT_PUBLIC_SUPABASE_URL=`, `NEXT_PUBLIC_SUPABASE_ANON_KEY=`, `SUPABASE_SERVICE_ROLE_KEY=`, `SLACK_BOT_TOKEN=`, `NOTION_API_KEY=`) + `.env.local` gitignore | `.env.example` 존재, `.env.local`이 git에 추적 안 됨 |
+| 5 | **Supabase 로컬 초기화** — `supabase init` 실행, `supabase/migrations/` 디렉토리 생성. 챗봇 스펙 §3의 SQL을 `supabase/migrations/0001_initial_schema.sql`로 저장 (`pgvector` extension 활성화 포함). 빈 seed: `supabase/seed.sql` | `supabase db reset` 로컬 실행 성공 (Docker 필요) |
+| 6 | **린터 도구 먼저 작성 (TDD)** — `tools/lint-agents-md.ts`, `tools/lint-structure.ts` + fixture 테스트 | vitest로 fixture 통과 |
+| 7 | ESLint 커스텀 룰 4개 작성 (TDD) + `eslint.config.mjs` 설정 | 룰별 fixture 테스트 통과 |
+| 8 | Tool contract test 골격 작성 — `src/domains/chat/runtime/tools/__tests__/contracts.test.ts` (디렉토리 glob으로 자동 탐지) | 빈 디렉토리 상태에서 테스트 0개 통과 |
+| 9 | `docs/` 디렉토리 + 핵심 문서 시드 작성 (`DESIGN.md`, `FRONTEND.md`, `PRODUCT_SENSE.md`, `QUALITY_SCORE.md`, `RELIABILITY.md`, `SECURITY.md`, `design-docs/core-beliefs.md`, 각 디렉토리 `index.md`) | (아직 AGENTS.md 없음) 파일 존재 확인 |
+| 10 | `ARCHITECTURE.md` 작성 | 파일 존재 |
+| 11 | `AGENTS.md` 작성 + `CLAUDE.md` 심볼릭 링크 (`ln -s AGENTS.md CLAUDE.md`) | 양쪽 존재, symlink target 정확 |
+| 12 | 이제 `tools/lint-agents-md.ts` 실행 → 통과해야 함 | 통과 |
+| 13 | `package.json` scripts + `.github/workflows/verify.yml` 작성 | 로컬에서 `npm run verify` 통과 |
+| 14 | 기존 챗봇 스펙(`docs/superpowers/specs/2026-05-25-internal-chatbot-design.md`)과 본 문서를 `docs/product-specs/`로 이동 → `docs/superpowers/` 디렉토리 삭제 | `tools/lint-structure.ts`가 `docs/superpowers/` 부재 확인 |
+| 15 | CI 워크플로우에 **symlink 보존 가드** 추가: `test -L CLAUDE.md && diff CLAUDE.md AGENTS.md` | CI 통과 |
 
-**Symlink 정책 (Section 11):**
+**Symlink 정책:**
 - 개발/배포 환경: macOS, Linux (Vercel) — git symlink 정상 동작
 - Windows 미지원 (v1): contributor가 Windows를 쓸 경우 `git config core.symlinks=true` + Developer Mode 필요. README에 명시
-- CI 가드: `test -L CLAUDE.md && diff CLAUDE.md AGENTS.md` (symlink 깨졌거나 내용 불일치 시 실패)
+- CI 가드: 위 step 15
 
 부트스트랩 완료 후 → 챗봇 제품 구현은 `superpowers:writing-plans`로 전환.
 
