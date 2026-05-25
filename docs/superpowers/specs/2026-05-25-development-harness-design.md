@@ -522,5 +522,5 @@ PR 차단 정책: 위 단계 중 하나라도 실패 시 머지 불가.
 4. CI 게이트가 PR을 차단할 수 있다 (실제 PR로 검증)
 5. superpowers의 brainstorming/writing-plans/executing-plans가 지정된 경로에 출력한다
 6. `CLAUDE.md` 심볼릭 링크가 깨지면 CI가 차단한다
-7. `tool-must-return-error` 룰이 throw하는 tool 코드를 차단한다 (타입 정보 기반)
+7. `src/domains/chat/runtime/tools/__tests__/contracts.test.ts` (vitest contract test, §7.6)가 throw하는 tool 또는 5초 초과 tool을 차단한다
 8. `no-secret-in-client` 룰이 허용 경로 밖에서 secret 사용 시 차단한다 (경로 기반)
