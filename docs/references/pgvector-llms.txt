@@ -1,0 +1,5 @@
+# pgvector — LLM Reference
+
+Source: https://github.com/pgvector/pgvector
+Key: cosine similarity search, HNSW index, match_documents RPC function.
+Embedding dimension: 1536 (text-embedding-3-small or equivalent)

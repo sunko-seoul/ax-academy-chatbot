@@ -1,0 +1,6 @@
+# Supabase — LLM Reference
+
+Source: https://supabase.com/docs/reference/javascript
+Fetch and paste the relevant sections (auth, db, storage) before implementing.
+New key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (replaces ANON_KEY)
+Server-side: SUPABASE_SECRET_KEY (replaces SERVICE_ROLE_KEY)
