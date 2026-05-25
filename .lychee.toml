@@ -1,0 +1,12 @@
+[params]
+# Offline mode — no external URL checks
+offline = true
+no_progress = true
+
+exclude_path = [
+  # Working documents (plans, specs) — contain relative links written in context of root
+  "docs/exec-plans",
+  "docs/product-specs",
+  # References docs — LLM context files, not meant to have resolvable links
+  "docs/references",
+]
