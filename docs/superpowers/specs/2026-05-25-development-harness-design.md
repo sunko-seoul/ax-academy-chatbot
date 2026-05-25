@@ -331,30 +331,44 @@ src/
 직접 작성. 다음을 검증:
 - AGENTS.md에서 언급된 모든 `docs/*.md` 파일이 실존
 - `docs/`의 모든 `.md` 파일이 AGENTS.md 또는 ARCHITECTURE.md에서 최소 1회 링크됨 (orphan 검출)
-- 각 `docs/*.md` 파일이 200라인 이하 (`docs/generated/`, `docs/references/`는 예외)
-- 각 파일 첫 줄이 `# {제목}` 형식
+- 각 `docs/*.md` 파일이 200라인 이하 (예외 디렉토리: 아래 참조)
+- 각 파일 첫 줄이 `# {제목}` 형식 (예외 디렉토리: 아래 참조)
+
+**Orphan 검출 예외 (디렉토리 단위 링크로 충분):**
+- `docs/exec-plans/active/**` — AGENTS.md가 `active/` 디렉토리를 통째로 참조하므로 개별 plan은 orphan 아님
+- `docs/exec-plans/completed/**` — 동일
+- `docs/generated/**` — AUTO-GENERATED, 디렉토리로 참조
+- `docs/references/**` — `.txt` 파일이므로 `.md` 스캔 대상 자체에서 제외
+
+**라인 한도/첫줄 헤딩 예외:**
+- `docs/generated/**` (자동 생성)
+- `docs/references/**` (외부 자료, 형식 다양)
+- `docs/exec-plans/**` (plan 템플릿은 §7.4에서 별도 검증)
+
+검사 대상 glob: `docs/**/*.md` (단 `docs/references/`는 .txt만 있어 자동 제외).
 
 종료 코드: 위반 시 1, 메시지에 위반 파일/사유 명시.
 
 ### 7.4 docs/ 구조 검증 (`tools/lint-structure.ts`)
-- `docs/exec-plans/active/` 의 모든 파일에 `## Goal`, `## Steps`, `## Success Criteria` 헤더 존재
+- `docs/exec-plans/active/` 의 모든 파일이 **비어있지 않고 최소 1개의 H2 헤더 보유** (superpowers writing-plans 출력 형식이 안정화되기 전까지 느슨하게 적용; v2에서 엄격 템플릿으로 강화)
 - `docs/product-specs/` 의 파일명이 `YYYY-MM-DD-*.md` 패턴
 - `docs/generated/` 의 모든 파일 첫 줄에 `<!-- AUTO-GENERATED: do not edit -->`
+- `docs/superpowers/`가 **존재하지 않아야 함** (경로 오버라이드 강제)
 - 종료 코드: 위반 시 1
 
 ### 7.5 ESLint 커스텀 룰 (`eslint.config.mjs`)
 
-5개 커스텀 룰을 `eslint-plugin-local`로 직접 작성:
+5개 커스텀 룰을 `eslint-plugin-local`로 직접 작성. 모두 `@typescript-eslint/parser` + `parserOptions.project: './tsconfig.json'`을 요구 (타입 정보 활용).
 
-| 룰 ID | 검사 내용 | 위반 메시지 (에이전트에 주입) |
-|------|----------|-----------------------------|
-| `no-secret-in-client` | secret env var가 클라이언트 컴포넌트에서 참조 | "Secret X cannot be used in client code. Move to src/providers/ or src/domains/*/repo.ts. See docs/SECURITY.md#secrets." |
-| `domain-boundary` | `src/domains/X`가 `src/domains/Y` import | "Cross-domain import detected. Use providers or duplicate logic. See ARCHITECTURE.md#domain-boundaries." |
-| `layer-direction` | 역방향 레이어 import | "Layer violation: repo cannot import service. See ARCHITECTURE.md#layer-model." |
-| `no-direct-db-in-ui` | React 컴포넌트가 `@supabase/supabase-js` import | "UI components must call API routes, not DB directly. See ARCHITECTURE.md#layers." |
-| `tool-must-return-error` | `domains/chat/runtime/tools/*`의 export 함수가 throw하거나 error union 미반환 | "Tools must return { error: string } instead of throwing. See docs/design-docs/core-beliefs.md#5." |
+| 룰 ID | 검사 방식 | 검사 내용 | 위반 메시지 |
+|------|---------|----------|------------|
+| `no-secret-in-client` | **경로 allowlist 방식** — `SUPABASE_SERVICE_ROLE_KEY` 등 지정 변수를 참조하는 파일이 허용 경로(`app/api/**`, `src/providers/**`, `src/domains/*/repo.ts`, `src/domains/*/runtime/**`)에 없으면 위반. `'use client'` 디렉티브 감지는 사용하지 않음 (§4 원칙 4와 일치). | secret env var가 허용 경로 밖에서 참조 | "Secret X cannot be used outside allowed paths. Allowed: app/api/**, src/providers/**, src/domains/*/repo.ts, src/domains/*/runtime/**. See docs/SECURITY.md." |
+| `domain-boundary` | AST: import 경로 분석 | `src/domains/X`가 `src/domains/Y` import | "Cross-domain import detected. Use providers or duplicate logic. See ARCHITECTURE.md." |
+| `layer-direction` | AST: import 경로 + 파일명 매핑 | 역방향 레이어 import | "Layer violation: repo cannot import service. See ARCHITECTURE.md." |
+| `no-direct-db-in-ui` | AST: import source 검사 | `src/app/**/*.tsx`가 `@supabase/supabase-js` import | "UI must call API routes, not DB directly. See ARCHITECTURE.md." |
+| `tool-must-return-error` | **타입 기반** — `@typescript-eslint`의 `getTypeAtLocation`으로 export 함수 반환 타입이 `{ error: string }` union을 포함하는지 검사 | `src/domains/chat/runtime/tools/*` export 함수가 `Promise<{...} \| { error: string }>` 형태 아님 | "Tools must return { error: string } union. See docs/design-docs/core-beliefs.md#5." |
 
-→ ESLint 에러 메시지에 **수정 방법 + 관련 문서 링크** 포함 (에이전트가 다음 시도에서 참조).
+→ 모든 메시지는 **수정 방법 + 관련 문서 경로** 포함 (에이전트 다음 시도에서 참조).
 
 ---
 
@@ -438,20 +452,26 @@ superpowers는 기본적으로 `docs/superpowers/specs/`, `docs/superpowers/plan
 
 ## 10. 부트스트랩 순서
 
-이 하네스 자체의 구축 순서. `writing-plans`에서 상세 plan으로 확장됨.
+이 하네스 자체의 구축 순서. **린터를 먼저 만들고 그 다음 문서를 작성**해야 검증 체인이 성립한다 (chicken-and-egg 회피). `writing-plans`에서 상세 plan으로 확장됨.
 
 | 단계 | 작업 | 검증 |
 |-----|------|------|
-| 1 | Next.js 15 App Router + TypeScript + Tailwind 프로젝트 초기화 | `npm run build` 성공 |
-| 2 | 의존성 추가 (vitest, eslint, markdownlint-cli2, lychee, tsx, zod, @anthropic-ai/agent-sdk, @supabase/supabase-js) | `npm install` 성공 |
-| 3 | `docs/` 구조 + 8종 핵심 문서 시드 작성 | `tools/lint-agents-md.ts` 통과 |
-| 4 | `AGENTS.md` 작성 + `CLAUDE.md` 심볼릭 링크 | 양쪽 모두 존재 |
-| 5 | `ARCHITECTURE.md` + `core-beliefs.md` 작성 | 링크 무결성 |
-| 6 | `tools/lint-agents-md.ts`, `tools/lint-structure.ts` 작성 (TDD) | 자기 자신을 검증해서 통과 |
-| 7 | ESLint 커스텀 룰 5개 작성 (TDD) | 룰별 fixture 테스트 통과 |
-| 8 | `package.json` scripts + `.github/workflows/verify.yml` 작성 | 로컬에서 `npm run verify` 통과 |
-| 9 | 기존 챗봇 스펙을 `docs/product-specs/`로 이동 + 본 문서도 이동 | 링크 무결성 |
-| 10 | superpowers 경로 오버라이드 검증 (`tools/lint-structure.ts`로 `docs/superpowers/` 비어있음 확인) | 통과 |
+| 1 | Next.js 15 App Router + TypeScript + Tailwind 프로젝트 초기화 | `npm run build` 성공 (build만, verify는 아직) |
+| 2 | 의존성 추가 (vitest, eslint, @typescript-eslint/*, markdownlint-cli2, lychee, tsx, zod, @anthropic-ai/agent-sdk, @supabase/supabase-js) | `npm install` 성공 |
+| 3 | **린터 도구 먼저 작성 (TDD)** — `tools/lint-agents-md.ts`, `tools/lint-structure.ts` + fixture 테스트 | vitest로 fixture 통과 |
+| 4 | ESLint 커스텀 룰 5개 작성 (TDD) + `eslint.config.mjs` 설정 (TS 프로젝트 참조 포함) | 룰별 fixture 테스트 통과 |
+| 5 | `docs/` 디렉토리 + 8종 핵심 문서 시드 작성 (`DESIGN.md`, `FRONTEND.md`, `PLANS.md`, `PRODUCT_SENSE.md`, `QUALITY_SCORE.md`, `RELIABILITY.md`, `SECURITY.md`, `design-docs/core-beliefs.md` + 각 디렉토리 `index.md`) | (아직 AGENTS.md 없음) 파일 존재 확인 |
+| 6 | `ARCHITECTURE.md` 작성 | 파일 존재 |
+| 7 | `AGENTS.md` 작성 + `CLAUDE.md` 심볼릭 링크 (`ln -s AGENTS.md CLAUDE.md`) | 양쪽 존재, symlink target 정확 |
+| 8 | 이제 `tools/lint-agents-md.ts` 실행 → 통과해야 함 | 통과 |
+| 9 | `package.json` scripts + `.github/workflows/verify.yml` 작성 | 로컬에서 `npm run verify` 통과 |
+| 10 | 기존 챗봇 스펙(`docs/superpowers/specs/2026-05-25-internal-chatbot-design.md`)과 본 문서를 `docs/product-specs/`로 이동 → `docs/superpowers/` 디렉토리 삭제 | `tools/lint-structure.ts`가 `docs/superpowers/` 부재 확인 |
+| 11 | CI 워크플로우에 **symlink 보존 가드** 추가: `test -L CLAUDE.md` (CLAUDE.md가 심볼릭 링크인지 확인) | CI 통과 |
+
+**Symlink 정책 (Section 11):**
+- 개발/배포 환경: macOS, Linux (Vercel) — git symlink 정상 동작
+- Windows 미지원 (v1): contributor가 Windows를 쓸 경우 `git config core.symlinks=true` + Developer Mode 필요. README에 명시
+- CI 가드: `test -L CLAUDE.md && diff CLAUDE.md AGENTS.md` (symlink 깨졌거나 내용 불일치 시 실패)
 
 부트스트랩 완료 후 → 챗봇 제품 구현은 `superpowers:writing-plans`로 전환.
 
@@ -459,8 +479,11 @@ superpowers는 기본적으로 `docs/superpowers/specs/`, `docs/superpowers/plan
 
 ## 11. 성공 기준
 
-1. 빈 상태에서 `npm run verify`가 통과한다 (시드 콘텐츠가 자체 검증 통과)
+1. 부트스트랩 step 9 완료 후 `npm run verify`가 통과한다 (시드 콘텐츠가 자체 검증 통과)
 2. 의도적으로 황금 원칙 위반 코드를 작성하면 ESLint 또는 lint:docs가 차단한다
-3. AGENTS.md에 없는 새 문서를 만들면 lint:docs가 orphan으로 감지한다
+3. AGENTS.md에 없는 새 문서를 임의 디렉토리에 만들면 lint:docs가 orphan으로 감지한다 (단 §7.3의 예외 디렉토리 제외)
 4. CI 게이트가 PR을 차단할 수 있다 (실제 PR로 검증)
 5. superpowers의 brainstorming/writing-plans/executing-plans가 지정된 경로에 출력한다
+6. `CLAUDE.md` 심볼릭 링크가 깨지면 CI가 차단한다
+7. `tool-must-return-error` 룰이 throw하는 tool 코드를 차단한다 (타입 정보 기반)
+8. `no-secret-in-client` 룰이 허용 경로 밖에서 secret 사용 시 차단한다 (경로 기반)
