@@ -6,7 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint . && markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.next\"",
+    "lint:docs": "tsx tools/lint-agents-md.ts && tsx tools/lint-structure.ts",
+    "lint:links": "lychee --offline --no-progress 'docs/**/*.md' AGENTS.md ARCHITECTURE.md",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "npm run lint && npm run lint:docs && npm run lint:links && npm run typecheck && npm run test",
+    "update-generated": "tsx tools/update-generated.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",

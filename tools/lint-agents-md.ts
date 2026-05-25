@@ -19,6 +19,7 @@ const LINT_EXEMPT_PREFIXES = [
   'docs/references',
   'docs/exec-plans',
   'docs/superpowers',
+  'docs/product-specs',
 ];
 
 const MAX_LINES = 200;

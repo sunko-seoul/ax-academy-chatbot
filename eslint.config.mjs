@@ -36,6 +36,20 @@ const eslintConfig = defineConfig([
       "local/no-direct-db-in-ui": "off",
     },
   },
+  {
+    // CJS plugin entry must use require(); test files may use `any` for ESLint rule casting
+    files: ["eslint-plugin-local/index.js"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    // Test files may use `any` for error catch and ESLint RuleTester casting
+    files: ["**/__tests__/**/*.ts", "**/*.test.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

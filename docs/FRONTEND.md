@@ -10,7 +10,7 @@ Next.js App Router 패턴 — Server Components 우선, RSC 경계, 상태관리
 
 ## RSC 경계 규칙
 
-```
+```text
 app/page.tsx (Server)
   └── components/ChatContainer.tsx ('use client' — 스트리밍 SSE 필요)
         └── components/MessageBubble.tsx (Server 가능 시 Server로)

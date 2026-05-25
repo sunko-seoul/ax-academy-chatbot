@@ -13,7 +13,7 @@
 
 ## 레이어 모델
 
-```
+```text
 types → config → repo → service → runtime → ui
 (Zod)   (env)   (DB)   (logic)   (route)  (React)
 ```
@@ -23,7 +23,7 @@ types → config → repo → service → runtime → ui
 
 ## 디렉토리 구조
 
-```
+```text
 src/
 ├── domains/
 │   ├── chat/

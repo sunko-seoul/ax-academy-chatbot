@@ -6,7 +6,9 @@
 ## 🎯 이 프로젝트는
 
 전 직원이 사용하는 사내 AI 어시스턴트. 자연어 질문에 따라 Slack/Notion/사내 문서를 자동 검색해 답변.
+
 - 제품 스펙: `docs/product-specs/2026-05-25-internal-chatbot-design.md`
+- 개발 하네스 설계: `docs/product-specs/2026-05-25-development-harness-design.md`
 - 아키텍처: `ARCHITECTURE.md`
 
 ## ⚡ 작업 시작 전 반드시 확인
@@ -66,6 +68,7 @@ npm run verify    # lint + lint:docs + lint:links + typecheck + test
 ```
 
 개별:
+
 ```bash
 npm run lint        # eslint + markdownlint
 npm run lint:docs   # AGENTS.md 링크 + 구조 검증

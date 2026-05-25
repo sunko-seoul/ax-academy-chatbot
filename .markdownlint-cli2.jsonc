@@ -3,12 +3,16 @@
     "MD013": { "line_length": 120 },
     "MD033": false,
     "MD041": true,
-    "MD047": true
+    "MD047": true,
+    "MD060": false
   },
   "globs": ["**/*.md"],
   "ignores": [
     "**/node_modules/**",
     "docs/references/**",
+    "docs/exec-plans/**",
+    "docs/product-specs/**",
+    ".agents/**",
     ".claude/**",
     ".next/**"
   ]

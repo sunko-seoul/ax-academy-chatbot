@@ -25,6 +25,7 @@ server-only 경로에서만 import 가능 (ESLint `no-secret-in-client` 룰로 �
 ## 5. Tool failures must be graceful
 
 Claude Agent SDK의 모든 tool은:
+
 - 외부 API 실패 시 **throw하지 않고** `{ error: "..." }` 형태로 반환
 - 타임아웃 5초 이내 (vitest contract test가 강제)
 
