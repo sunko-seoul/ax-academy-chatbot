@@ -33,3 +33,9 @@ v1은 macOS / Linux만 지원합니다. Windows 사용자는 WSL2를 사용하�
 
 → [AGENTS.md](AGENTS.md) — 목차/맵 (여기서 시작)
 → [ARCHITECTURE.md](ARCHITECTURE.md) — 도메인 × 레이어 설계
+
+## Status
+
+**Development Harness:** ✅ Operational (bootstrapped 2026-05-25)
+
+The development harness is fully set up. Run `npm run verify` to confirm all checks pass.
