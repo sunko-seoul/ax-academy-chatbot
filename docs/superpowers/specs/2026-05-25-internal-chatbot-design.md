@@ -75,9 +75,9 @@ CREATE TABLE messages (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id  uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   role             text NOT NULL CHECK (role IN ('user', 'assistant', 'tool')),
-  content          text NOT NULL,
+  content          text,                  -- tool 메시지는 null 가능 (tool_calls에 구조화 저장)
   tool_calls       jsonb,                 -- 에이전트 tool call 로그
-  created_at       timestamptz DEFAULT now()
+  created_at       timestamptz DEFAULT now()  -- 대화 순서 정렬 기준
 );
 
 -- 사내 knowledge base 문서
@@ -145,11 +145,11 @@ const internalAgent = new Agent({
 
 ### Tools 정의
 
-| Tool | 입력 파라미터 | 동작 | 출력 |
+| Tool | 입력 파라미터 | 동작 | 반환 형식 |
 |------|------------|------|------|
-| `search_slack` | `query: string`, `channel?: string`, `limit?: number` | Slack API `/search.messages` 호출 | 관련 메시지 목록 + 링크 |
-| `search_notion` | `query: string`, `limit?: number` | Notion API search 호출 | 관련 페이지 제목 + 요약 + 링크 |
-| `search_knowledge_base` | `query: string` | Supabase pgvector 코사인 유사도 검색 | 관련 문서 청크 (상위 5개) |
+| `search_slack` | `query: string`, `channel?: string`, `limit: number = 5` | Slack API `/search.messages` 호출 | `[{ text, author, channel, ts, permalink }]` (최대 limit개) |
+| `search_notion` | `query: string`, `limit: number = 5` | Notion API `/search` 호출 | `[{ title, excerpt(200자), url, last_edited }]` (최대 limit개) |
+| `search_knowledge_base` | `query: string` | Supabase pgvector 코사인 유사도 검색 | `[{ title: string, content: string(최대 500자), similarity_score: number }]` (상위 5개, threshold 0.7) |
 
 ### 스트리밍 API Route
 
@@ -168,11 +168,18 @@ export async function POST(req: Request) {
   // 에이전트 실행 (스트리밍)
   const stream = run(internalAgent, [...history, { role: "user", content: message }]);
 
-  // 메시지 저장 (백그라운드)
-  saveMessages(conversationId, message, stream);
-
-  // SSE 스트리밍 응답
-  return stream.toTextStreamResponse();
+  // SSE 스트리밍 응답 (스트리밍 완료 후 메시지 저장)
+  // 저장 실패 시: 서버 에러 로그만 기록 (v1 — silent failure)
+  return stream.toTextStreamResponse({
+    onFinish: async ({ text, toolCalls }) => {
+      try {
+        await saveMessages(conversationId, message, text, toolCalls);
+      } catch (err) {
+        console.error("Message save failed:", err);
+        // v1: 클라이언트 알림 없음. 사용자가 이전 대화 목록에서 누락을 인지함
+      }
+    },
+  });
 }
 ```
 
@@ -257,6 +264,7 @@ app/
 | API 키 노출 | Slack/Notion/Anthropic 키는 서버 환경변수만 |
 | 데이터 격리 | Supabase RLS — 본인 대화만 조회 가능 |
 | 문서 접근 | 전직원 read, 관리자만 write |
+| Rate limiting | `/api/chat`: 사용자당 분당 20 요청 제한 (Supabase Edge Function 또는 미들웨어에서 처리) |
 
 ---
 
@@ -269,6 +277,7 @@ app/
 | 검색 결과 없음 | "관련 문서를 찾지 못했습니다. 관리자에게 문의하세요" |
 | 스트리밍 연결 끊김 | SSE 자동 재연결 |
 | 권한 없는 /admin 접근 | 403 → /chat 리다이렉트 |
+| 메시지 저장 실패 | 서버 로그만 기록 (v1). 사용자는 대화 목록에서 누락을 인지 |
 
 ---
 
