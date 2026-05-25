@@ -36,6 +36,7 @@
 | 에이전트 / Tools | `docs/design-docs/index.md` |
 | RAG / 임베딩 | `docs/design-docs/index.md` |
 | 보안 / 인증 | `docs/SECURITY.md` |
+| 제품 방향 / 의사결정 | `docs/PRODUCT_SENSE.md` |
 | 외부 라이브러리 | `docs/references/` |
 
 ## ✋ 절대 하지 마세요

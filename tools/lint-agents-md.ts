@@ -11,12 +11,14 @@ const ORPHAN_EXEMPT_PREFIXES = [
   'docs/exec-plans/active',
   'docs/exec-plans/completed',
   'docs/generated',
+  'docs/superpowers',
 ];
 
 const LINT_EXEMPT_PREFIXES = [
   'docs/generated',
   'docs/references',
   'docs/exec-plans',
+  'docs/superpowers',
 ];
 
 const MAX_LINES = 200;
